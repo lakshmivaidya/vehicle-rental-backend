@@ -1,8 +1,6 @@
-// backend/routes/authRoutes.js
-
 const express = require("express");
 const router = express.Router();
-const bcrypt = require("bcryptjs"); // ✅ changed
+const bcrypt = require("bcryptjs"); // IMPORTANT
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
@@ -30,7 +28,7 @@ router.post("/register", async (req, res) => {
       role: role || "user",
     });
 
-    res.json({ message: "Registered successfully", user });
+    res.status(201).json({ message: "Registered successfully", user });
   } catch (err) {
     console.error("REGISTER ERROR:", err);
     res.status(500).json({ message: "Registration failed" });
@@ -57,7 +55,7 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
 
     const token = jwt.sign(
-      { id: user._id },
+      { id: user._id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );

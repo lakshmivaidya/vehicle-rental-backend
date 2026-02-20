@@ -14,12 +14,6 @@ app.use(cors({
   credentials: true
 }));
 
-// Allow JWT header
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-  next();
-});
-
 app.use(express.json());
 
 // MongoDB connection
@@ -34,9 +28,9 @@ app.use("/api/bookings", require("./routes/bookingRoutes"));
 app.use("/api/reviews", require("./routes/reviewRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
 
-// Health check route
+// Health check
 app.get("/", (req, res) => {
-  res.send("Vehicle Rental Backend is Running");
+  res.send("Vehicle Rental Backend is Running 🚀");
 });
 
 const PORT = process.env.PORT || 5000;

@@ -2,37 +2,33 @@ const express = require("express");
 const router = express.Router();
 const Vehicle = require("../models/Vehicle");
 
-// GET /api/vehicles?type=Car&minPrice=10&maxPrice=100&location=City
+// =====================
+// Get all vehicles
+// =====================
 router.get("/", async (req, res) => {
   try {
-    const { type, minPrice, maxPrice, location } = req.query;
-
-    const filter = {};
-
-    if (type) {
-      filter.category = { $regex: type, $options: "i" }; // case-insensitive
-    }
-
-    if (minPrice || maxPrice) {
-      filter.pricePerDay = {};
-      if (minPrice) filter.pricePerDay.$gte = Number(minPrice);
-      if (maxPrice) filter.pricePerDay.$lte = Number(maxPrice);
-    }
-
-    if (location) {
-      filter.location = { $regex: location, $options: "i" };
-    }
-
-    const vehicles = await Vehicle.find(filter);
+    const vehicles = await Vehicle.find();
     res.json(vehicles);
   } catch (err) {
-    console.error(err);
+    console.error("FETCH VEHICLES ERROR:", err);
     res.status(500).json({ message: "Failed to fetch vehicles" });
   }
 });
 
-router.post("/", async (req, res) => {
-  res.json(await Vehicle.create(req.body));
+// =====================
+// Get single vehicle
+// =====================
+router.get("/:id", async (req, res) => {
+  try {
+    const vehicle = await Vehicle.findById(req.params.id);
+    if (!vehicle)
+      return res.status(404).json({ message: "Vehicle not found" });
+
+    res.json(vehicle);
+  } catch (err) {
+    console.error("FETCH SINGLE VEHICLE ERROR:", err);
+    res.status(500).json({ message: "Error fetching vehicle" });
+  }
 });
 
 module.exports = router;
