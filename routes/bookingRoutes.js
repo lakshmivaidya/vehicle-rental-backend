@@ -2,156 +2,225 @@ const express = require("express");
 const router = express.Router();
 const Booking = require("../models/Booking");
 const Vehicle = require("../models/Vehicle");
-const Review = require("../models/Review");
+const User = require("../models/User");
+const nodemailer = require("nodemailer");
 
-// Create a booking
-router.post("/", async (req, res) => {
+// Email setup
+const transporter = nodemailer.createTransport({
+  service: "Gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+// =======================
+// GET ALL BOOKINGS
+// =======================
+router.get("/", async (req, res) => {
   try {
-    const { userId, vehicleId, days } = req.body;
+    const bookings = await Booking.find()
+      .populate("userId", "name email")
+      .populate("vehicleId", "make model image pricePerDay");
 
-    if (!userId || !vehicleId || !days || days < 1) {
-      return res.status(400).json({ message: "Invalid booking data" });
+    res.json(bookings);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// =======================
+// CREATE BOOKING (FINAL FIX)
+// =======================
+router.post("/", async (req, res) => {
+  const { userId, vehicleId, startDate, endDate } = req.body;
+
+  if (!userId || !vehicleId || !startDate || !endDate) {
+    return res.status(400).json({ message: "Invalid booking data" });
+  }
+
+  try {
+    const vehicle = await Vehicle.findById(vehicleId);
+    const user = await User.findById(userId);
+
+    if (!vehicle) return res.status(404).json({ message: "Vehicle not found" });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // ✅ Normalize dates (fix timezone issue)
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    if (start > end) {
+      return res.status(400).json({ message: "Invalid booking dates" });
     }
 
-    const vehicle = await Vehicle.findById(vehicleId);
-    if (!vehicle) return res.status(404).json({ message: "Vehicle not found" });
-
-    // Check for overlapping bookings
-    const now = new Date();
-    const existingBookings = await Booking.find({
+    // ✅ FINAL FIX: Only block ACTIVE bookings
+    const overlapping = await Booking.find({
       vehicleId,
-      startDate: { $lte: new Date(now.getTime() + days * 24 * 60 * 60 * 1000) },
-      endDate: { $gte: now },
-      status: { $ne: "cancelled" },
+      status: "booked", // ONLY this blocks booking
+      startDate: { $lte: end },
+      endDate: { $gte: start },
     });
 
-    if (existingBookings.length > 0) {
-      return res.status(400).json({ message: "Vehicle is already booked" });
+    if (overlapping.length > 0) {
+      return res.status(400).json({
+        message: "Vehicle not available for selected dates",
+      });
     }
 
-    const startDate = new Date();
-    const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + Number(days));
+    // PRICE CALCULATION
+    let days = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+    if (days === 0) days = 1;
 
-    const totalPrice = vehicle.pricePerDay * Number(days);
+    const totalPrice = days * vehicle.pricePerDay;
 
+    // CREATE BOOKING
     const booking = await Booking.create({
       userId,
       vehicleId,
-      startDate,
-      endDate,
+      startDate: start,
+      endDate: end,
       totalPrice,
       status: "booked",
     });
 
+    // EMAIL
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: user.email,
+        subject: "Booking Confirmation",
+        text: `Your booking for ${vehicle.make} ${vehicle.model} from ${start.toDateString()} to ${end.toDateString()} is confirmed.`,
+      });
+    } catch (emailErr) {
+      console.error("Email error:", emailErr.message);
+    }
+
     res.json(booking);
-  } catch (error) {
-    console.error("Booking error:", error);
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Booking failed" });
   }
 });
 
-// Get all bookings
-router.get("/", async (req, res) => {
-  try {
-    const bookings = await Booking.find()
-      .populate("vehicleId")
-      .populate("userId");
-    res.json(bookings);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to fetch bookings" });
-  }
-});
-
-// Cancel a booking
+// =======================
+// CANCEL BOOKING
+// =======================
 router.delete("/cancel/:id", async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
-    if (!booking) return res.status(404).json({ message: "Booking not found" });
 
-    // Only booked bookings can be cancelled
-    if (booking.status !== "booked") {
-      return res.status(400).json({ message: "Cannot cancel after payment" });
-    }
+    if (!booking)
+      return res.status(404).json({ message: "Booking not found" });
 
     booking.status = "cancelled";
     await booking.save();
 
-    res.json({ message: "Booking canceled" });
+    res.json({ message: "Booking cancelled" });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ message: "Failed to cancel booking" });
   }
 });
 
-// Pay for a booking
-router.post("/pay/:id", async (req, res) => {
-  try {
-    const booking = await Booking.findById(req.params.id)
-      .populate("vehicleId")
-      .populate("userId");
-
-    if (!booking) return res.status(404).json({ message: "Booking not found" });
-
-    if (booking.status !== "booked") {
-      return res.status(400).json({ message: "Booking already paid or cancelled" });
-    }
-
-    booking.status = "paid";
-    await booking.save();
-
-    res.json(booking);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Payment failed" });
-  }
-});
-
-// Mark booking as completed
+// =======================
+// COMPLETE BOOKING
+// =======================
 router.post("/complete/:id", async (req, res) => {
   try {
-    const booking = await Booking.findById(req.params.id)
-      .populate("vehicleId")
-      .populate("userId");
+    const booking = await Booking.findById(req.params.id);
 
-    if (!booking) return res.status(404).json({ message: "Booking not found" });
-    if (booking.status !== "paid") {
-      return res.status(400).json({ message: "Only paid bookings can be completed" });
-    }
+    if (!booking)
+      return res.status(404).json({ message: "Booking not found" });
 
     booking.status = "completed";
     await booking.save();
 
-    res.json(booking);
+    res.json({ message: "Booking marked as completed" });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ message: "Failed to complete booking" });
   }
 });
 
-// Add review
+// =======================
+// PAYMENT
+// =======================
+router.post("/pay/:id", async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking)
+      return res.status(404).json({ message: "Booking not found" });
+
+    booking.status = "paid"; // becomes available again
+    await booking.save();
+
+    res.json({ message: "Payment successful" });
+  } catch (err) {
+    res.status(500).json({ message: "Payment failed" });
+  }
+});
+
+// =======================
+// VEHICLE HISTORY
+// =======================
+router.get("/vehicle/:vehicleId/history", async (req, res) => {
+  try {
+    const bookings = await Booking.find({
+      vehicleId: req.params.vehicleId,
+    })
+      .populate("userId", "name email")
+      .sort({ startDate: -1 });
+
+    res.json(bookings);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch history" });
+  }
+});
+
+// =======================
+// USER HISTORY
+// =======================
+router.get("/user/:userId/history", async (req, res) => {
+  try {
+    const bookings = await Booking.find({
+      userId: req.params.userId,
+    })
+      .populate("vehicleId", "make model")
+      .sort({ startDate: -1 });
+
+    res.json(bookings);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch history" });
+  }
+});
+
+// =======================
+// ADD REVIEW
+// =======================
 router.post("/review/:id", async (req, res) => {
   try {
-    const booking = await Booking.findById(req.params.id).populate("userId");
-    if (!booking) return res.status(404).json({ message: "Booking not found" });
-    if (booking.status !== "completed") {
-      return res.status(400).json({ message: "Can only review completed bookings" });
+    const { rating, comment } = req.body;
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
     }
 
-    const { rating, comment } = req.body;
-
-    const review = await Review.create({
-      vehicleId: booking.vehicleId,
-      userName: booking.userId.name,
+    booking.review = {
       rating,
       comment,
-    });
+      date: new Date(),
+    };
 
-    res.json(review);
+    await booking.save();
+
+    res.json({ message: "Review submitted successfully" });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Failed to add review" });
+    res.status(500).json({ message: "Failed to submit review" });
   }
 });
 
