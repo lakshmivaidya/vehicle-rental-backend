@@ -9,17 +9,17 @@ router.get("/", async (req, res) => {
 
     let filter = {};
 
-    // Case-insensitive category filter
-    if (category) {
-      filter.category = { $regex: category, $options: "i" };
+    // ✅ FIX: use "type" instead of "category"
+    if (category && category.trim() !== "") {
+      filter.type = { $regex: category.trim(), $options: "i" };
     }
 
-    // Case-insensitive location filter
-    if (location) {
-      filter.location = { $regex: location, $options: "i" };
+    // ✅ Location filter (case-insensitive)
+    if (location && location.trim() !== "") {
+      filter.location = { $regex: location.trim(), $options: "i" };
     }
 
-    // Price range filter
+    // ✅ Price range filter
     if (minPrice || maxPrice) {
       filter.pricePerDay = {};
       if (minPrice) filter.pricePerDay.$gte = Number(minPrice);
@@ -30,6 +30,7 @@ router.get("/", async (req, res) => {
     res.json(vehicles);
 
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Failed to fetch vehicles" });
   }
 });
