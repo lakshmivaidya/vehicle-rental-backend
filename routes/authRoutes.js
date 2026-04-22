@@ -4,7 +4,7 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-// Register
+// ================= REGISTER =================
 router.post("/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -31,7 +31,7 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// Login
+// ================= LOGIN =================
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -50,7 +50,6 @@ router.post("/login", async (req, res) => {
       { expiresIn: "1d" }
     );
 
-    // ✅ IMPORTANT FIX: send _id instead of id
     res.json({
       token,
       user: {
@@ -65,7 +64,40 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// Get all users
+// ================= UPDATE PROFILE =================
+router.put("/update", async (req, res) => {
+  try {
+    const { userId, name, email, password } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user)
+      return res.status(404).json({ message: "User not found" });
+
+    // Update fields
+    if (name) user.name = name;
+    if (email) user.email = email;
+
+    if (password && password.trim() !== "") {
+      user.password = await bcrypt.hash(password, 10);
+    }
+
+    await user.save();
+
+    res.json({
+      message: "Profile updated successfully",
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ================= GET ALL USERS =================
 router.get("/users", async (req, res) => {
   try {
     const users = await User.find().select("-password");

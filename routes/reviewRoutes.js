@@ -3,25 +3,27 @@ const router = express.Router();
 const Booking = require("../models/Booking");
 
 // =======================
-// GET REVIEWS FOR VEHICLE (FROM BOOKINGS)
+// GET REVIEWS FOR VEHICLE
 // =======================
 router.get("/:vehicleId", async (req, res) => {
   try {
     const bookings = await Booking.find({
       vehicleId: req.params.vehicleId,
-      "review.rating": { $exists: true }
-    }).populate("userId", "name");
+      "review.rating": { $exists: true, $ne: null }
+    }).populate("userId", "name email");
 
-    const reviews = bookings.map((b) => ({
-      rating: b.review.rating,
-      comment: b.review.comment,
-      userName: b.userId?.name || "User",
-      date: b.review.date,
-    }));
+    const reviews = bookings
+      .filter(b => b.review && typeof b.review.rating === "number")
+      .map((b) => ({
+        rating: b.review.rating,
+        comment: b.review.comment || "",
+        userName: b.userId?.name || "User",
+        date: b.review.date || b.updatedAt,
+      }));
 
     res.json(reviews);
   } catch (err) {
-    console.error(err);
+    console.error("GET REVIEWS ERROR:", err);
     res.status(500).json({ message: "Failed to fetch reviews" });
   }
 });
