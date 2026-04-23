@@ -1,4 +1,4 @@
-const express = require("express");
+/*const express = require("express");
 const router = express.Router();
 const Vehicle = require("../models/Vehicle");
 
@@ -29,4 +29,4 @@ router.post("/", async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = router; */

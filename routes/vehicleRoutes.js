@@ -2,21 +2,28 @@ const express = require("express");
 const router = express.Router();
 const Vehicle = require("../models/Vehicle");
 const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
 const auth = require("../middleware/auth");
 
 // =======================
-// MULTER CONFIG
+// CLOUDINARY CONFIG (NEW)
 // =======================
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = "uploads/";
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir);
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
+const cloudinary = require("cloudinary").v2;
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+require("dotenv").config();
+
+// Cloudinary setup
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// Multer Cloudinary storage
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: "vehicle_rental",
+    allowed_formats: ["jpg", "jpeg", "png", "webp"],
   },
 });
 
@@ -31,17 +38,17 @@ router.get("/", async (req, res) => {
 
     let filter = { available: true };
 
-    // ✅ FIX 1: category → type mapping + safe trimming
+    // category → type mapping
     if (category && category.trim() !== "") {
       filter.type = { $regex: category.trim(), $options: "i" };
     }
 
-    // ✅ FIX 2: location filter (case-insensitive)
+    // location filter
     if (location && location.trim() !== "") {
       filter.location = { $regex: location.trim(), $options: "i" };
     }
 
-    // ✅ FIX 3: price range (robust numeric handling)
+    // price range
     if (
       (minPrice !== undefined && minPrice !== "") ||
       (maxPrice !== undefined && maxPrice !== "")
@@ -67,7 +74,7 @@ router.get("/", async (req, res) => {
 });
 
 // =======================
-// CREATE VEHICLE (ROBUST FIX)
+// CREATE VEHICLE (CLOUDINARY UPLOAD)
 // =======================
 router.post("/", auth, upload.single("image"), async (req, res) => {
   try {
@@ -88,7 +95,10 @@ router.post("/", auth, upload.single("image"), async (req, res) => {
       type,
       location,
       pricePerDay,
-      image: req.file ? `/uploads/${req.file.filename}` : "",
+
+      // ✅ CLOUDINARY URL
+      image: req.file ? req.file.path : "",
+
       userId: req.user.id,
       available: true,
     });
