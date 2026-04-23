@@ -1,6 +1,6 @@
 .env
-nodu_modules/
+node_modules/
 dist/
 .vercel
 .env*.local
-
+uploads/
