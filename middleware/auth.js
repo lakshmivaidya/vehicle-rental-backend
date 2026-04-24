@@ -2,19 +2,35 @@ const jwt = require("jsonwebtoken");
 
 module.exports = (req, res, next) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1];
+    const authHeader = req.headers.authorization;
 
-    if (!token) {
+    if (!authHeader) {
       return res.status(401).json({ message: "No token provided" });
     }
 
-    // 🔥 FORCE SAME KEY USED EVERYWHERE
-    const decoded = jwt.verify(token, process.env.JWT_KEY || "secretkey");
+    const token = authHeader.split(" ")[1];
 
-    req.user = decoded;
+    if (!token) {
+      return res.status(401).json({ message: "Invalid token format" });
+    }
+
+    const secret = process.env.JWT_SECRET;
+
+    if (!secret) {
+      console.error("JWT_SECRET is missing");
+      return res.status(500).json({ message: "Server config error" });
+    }
+
+    const decoded = jwt.verify(token, secret);
+
+    // ✅ FIX: normalize user object
+    req.user = {
+      userId: decoded.userId,
+    };
 
     next();
   } catch (err) {
+    console.error("AUTH ERROR:", err.message);
     return res.status(401).json({ message: "Invalid token" });
   }
 };

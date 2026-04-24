@@ -32,6 +32,7 @@ router.post("/register", async (req, res) => {
 });
 
 // ================= LOGIN =================
+// ================= LOGIN =================
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -44,9 +45,10 @@ router.post("/login", async (req, res) => {
     if (!isMatch)
       return res.status(400).json({ message: "Incorrect password" });
 
+    // ✅ FIX: STANDARDIZED TOKEN PAYLOAD
     const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_KEY || "secretkey",
+      { userId: user._id },
+      process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
 
@@ -73,7 +75,6 @@ router.put("/update", async (req, res) => {
     if (!user)
       return res.status(404).json({ message: "User not found" });
 
-    // Update fields
     if (name) user.name = name;
     if (email) user.email = email;
 
@@ -97,7 +98,7 @@ router.put("/update", async (req, res) => {
   }
 });
 
-// ================= GET ALL USERS =================
+// ================= GET USERS =================
 router.get("/users", async (req, res) => {
   try {
     const users = await User.find().select("-password");
