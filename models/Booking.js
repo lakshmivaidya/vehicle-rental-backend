@@ -19,11 +19,10 @@ const bookingSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true, // Automatically adds createdAt and updatedAt
+    timestamps: true,
   }
 );
 
-// Optional: virtual to convert createdAt to IST string
 bookingSchema.virtual("createdAtIST").get(function () {
   if (!this.createdAt) return null;
   return new Date(this.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });

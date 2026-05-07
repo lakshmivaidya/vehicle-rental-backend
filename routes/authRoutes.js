@@ -4,10 +4,25 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-// ================= REGISTER =================
+const allowedDomains = ["gmail.com", "yahoo.com", "outlook.com"];
+
+const isValidEmail = (email) => {
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!regex.test(email)) return false;
+
+  const domain = email.split("@")[1].toLowerCase();
+  return allowedDomains.includes(domain);
+};
+
 router.post("/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({
+        message: "Only Gmail, Yahoo, and Outlook emails are allowed",
+      });
+    }
 
     const existingUser = await User.findOne({ email });
     if (existingUser)
@@ -31,8 +46,6 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// ================= LOGIN =================
-// ================= LOGIN =================
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -45,7 +58,6 @@ router.post("/login", async (req, res) => {
     if (!isMatch)
       return res.status(400).json({ message: "Incorrect password" });
 
-    // ✅ FIX: STANDARDIZED TOKEN PAYLOAD
     const token = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET,
@@ -66,7 +78,6 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// ================= UPDATE PROFILE =================
 router.put("/update", async (req, res) => {
   try {
     const { userId, name, email, password } = req.body;
@@ -74,6 +85,12 @@ router.put("/update", async (req, res) => {
     const user = await User.findById(userId);
     if (!user)
       return res.status(404).json({ message: "User not found" });
+
+    if (email && !isValidEmail(email)) {
+      return res.status(400).json({
+        message: "Only Gmail, Yahoo, and Outlook emails are allowed",
+      });
+    }
 
     if (name) user.name = name;
     if (email) user.email = email;
@@ -98,7 +115,6 @@ router.put("/update", async (req, res) => {
   }
 });
 
-// ================= GET USERS =================
 router.get("/users", async (req, res) => {
   try {
     const users = await User.find().select("-password");

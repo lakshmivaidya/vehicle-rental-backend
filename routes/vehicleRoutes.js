@@ -8,16 +8,12 @@ const cloudinary = require("cloudinary").v2;
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 require("dotenv").config();
 
-// =======================
-// CLOUDINARY CONFIG (FIXED SAFETY CHECK)
-// =======================
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_NAME,
   api_key: process.env.CLOUDINARY_KEY,
   api_secret: process.env.CLOUDINARY_SECRET,
 });
 
-// ⚠️ FIX: prevent crash if env is missing
 if (
   !process.env.CLOUDINARY_NAME ||
   !process.env.CLOUDINARY_KEY ||
@@ -26,9 +22,6 @@ if (
   console.error("Cloudinary env variables missing");
 }
 
-// =======================
-// MULTER STORAGE
-// =======================
 const storage = new CloudinaryStorage({
   cloudinary,
   params: {
@@ -39,9 +32,6 @@ const storage = new CloudinaryStorage({
 
 const upload = multer({ storage });
 
-// =======================
-// GET VEHICLES (NO CHANGE IN LOGIC)
-// =======================
 router.get("/", async (req, res) => {
   try {
     const { category, location, minPrice, maxPrice } = req.query;
@@ -80,12 +70,9 @@ router.get("/", async (req, res) => {
   }
 });
 
-// =======================
-// CREATE VEHICLE (FIXED ONLY AUTH NORMALIZATION)
-// =======================
 router.post("/", auth, upload.single("image"), async (req, res) => {
   try {
-    // FIX: use ONLY normalized auth field safely
+    
     const userId = req.user?.userId || req.user?.id;
 
     if (!userId) {
@@ -120,9 +107,6 @@ router.post("/", auth, upload.single("image"), async (req, res) => {
   }
 });
 
-// =======================
-// UPDATE VEHICLE (FIXED ONLY AUTH NORMALIZATION)
-// =======================
 router.put("/:id", auth, async (req, res) => {
   try {
     const vehicle = await Vehicle.findById(req.params.id);
@@ -172,9 +156,6 @@ router.put("/:id", auth, async (req, res) => {
   }
 });
 
-// =======================
-// UNLIST VEHICLE (FIXED ONLY AUTH NORMALIZATION)
-// =======================
 router.patch("/:id/unlist", auth, async (req, res) => {
   try {
     const vehicle = await Vehicle.findById(req.params.id);
@@ -202,9 +183,6 @@ router.patch("/:id/unlist", auth, async (req, res) => {
   }
 });
 
-// =======================
-// RELIST VEHICLE (FIXED ONLY AUTH NORMALIZATION)
-// =======================
 router.patch("/:id/relist", auth, async (req, res) => {
   try {
     const vehicle = await Vehicle.findById(req.params.id);

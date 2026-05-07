@@ -2,9 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Booking = require("../models/Booking");
 
-// =======================
-// GET REVIEWS FOR VEHICLE
-// =======================
+
 router.get("/:vehicleId", async (req, res) => {
   try {
     const bookings = await Booking.find({

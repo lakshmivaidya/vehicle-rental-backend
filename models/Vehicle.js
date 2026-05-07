@@ -11,7 +11,6 @@ const vehicleSchema = new mongoose.Schema(
     image: String,
     available: { type: Boolean, default: true },
 
-    // ✅ CRITICAL FIX: OWNER FIELD
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

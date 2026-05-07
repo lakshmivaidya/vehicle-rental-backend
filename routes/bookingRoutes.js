@@ -5,7 +5,6 @@ const Vehicle = require("../models/Vehicle");
 const User = require("../models/User");
 const nodemailer = require("nodemailer");
 
-// Email setup
 const transporter = nodemailer.createTransport({
   service: "Gmail",
   auth: {
@@ -14,9 +13,6 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// =======================
-// GET ALL BOOKINGS (ADMIN FIXED - FULL POPULATION)
-// =======================
 router.get("/", async (req, res) => {
   try {
     const bookings = await Booking.find()
@@ -29,9 +25,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// =======================
-// CREATE BOOKING
-// =======================
 router.post("/", async (req, res) => {
   const { userId, vehicleId, startDate, endDate } = req.body;
 
@@ -113,9 +106,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-// =======================
-// CANCEL
-// =======================
+
 router.delete("/cancel/:id", async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
@@ -130,9 +121,7 @@ router.delete("/cancel/:id", async (req, res) => {
   }
 });
 
-// =======================
-// COMPLETE
-// =======================
+
 router.post("/complete/:id", async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
@@ -147,9 +136,7 @@ router.post("/complete/:id", async (req, res) => {
   }
 });
 
-// =======================
-// PAYMENT (SIMULATED)
-// =======================
+
 router.post("/pay/:id", async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
@@ -164,9 +151,6 @@ router.post("/pay/:id", async (req, res) => {
   }
 });
 
-// =======================
-// VEHICLE HISTORY (FIXED - NOW INCLUDES REVIEW)
-// =======================
 router.get("/vehicle/:vehicleId/history", async (req, res) => {
   try {
     const bookings = await Booking.find({
@@ -192,7 +176,6 @@ router.get("/vehicle/:vehicleId/history", async (req, res) => {
         totalPrice: b.totalPrice,
         status: b.status,
 
-        // ✅ FIX ADDED HERE
         review: b.review || null,
       };
     });
@@ -203,9 +186,7 @@ router.get("/vehicle/:vehicleId/history", async (req, res) => {
   }
 });
 
-// =======================
-// USER HISTORY
-// =======================
+
 router.get("/user/:userId/history", async (req, res) => {
   try {
     const bookings = await Booking.find({
@@ -220,9 +201,7 @@ router.get("/user/:userId/history", async (req, res) => {
   }
 });
 
-// =======================
-// REVIEW
-// =======================
+
 router.post("/review/:id", async (req, res) => {
   try {
     const { rating, comment } = req.body;

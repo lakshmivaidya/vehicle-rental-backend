@@ -23,7 +23,6 @@ module.exports = (req, res, next) => {
 
     const decoded = jwt.verify(token, secret);
 
-    // ✅ FIX: normalize user object
     req.user = {
       userId: decoded.userId,
     };
