@@ -1,10 +1,10 @@
-# Online Vehicle Rental System
+# Online Vehicle Rental System :
 
 An online vehicle rental platform that allows users to browse, book, and review vehicles, and allows administrators to manage vehicles, bookings, and users. Built with the MERN stack and styled using TailwindCSS.
 
 # Features
 
-# User Features
+# User Features :
 - Browse available vehicles with filters by category, location, and price.
 - View detailed vehicle information including images, pricing, and availability.
 - Book vehicles for specific dates using a simple booking system.
@@ -13,18 +13,18 @@ An online vehicle rental platform that allows users to browse, book, and review 
 - Submit ratings and reviews for vehicles after completing bookings.
 - Manage user profile information.
 
-# Admin Features
+# Admin Features :
 - Dashboard for managing vehicles, users, and bookings.
 - Approve or reject new vehicle listings.
 - Monitor payment statuses and booking activities.
 - View user and vehicle rental histories.
 
-# General Features
+# General Features :
 - Secure user registration and login.
 - Role-based access control (User/Admin).
 - Responsive UI with TailwindCSS styling.
 
-# Tech Stack
+# Tech Stack :
 - Frontend: React, TailwindCSS
 - Backend: Node.js, Express.js
 - Database: MongoDB
@@ -40,6 +40,6 @@ An online vehicle rental platform that allows users to browse, book, and review 
 - Admins can manage vehicles, view bookings, and monitor users.
 - Logout securely when done.
 
-# Admin Credentials
+# Admin Credentials :
 Email : admin@gmail.com
 Password : admin123
