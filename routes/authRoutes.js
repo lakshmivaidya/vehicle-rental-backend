@@ -4,14 +4,11 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-// Email validation function
 const isValidEmail = (email) => {
   const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  
-  // Basic email format check
+
   if (!regex.test(email)) return false;
 
-  // Check if email ends with .com
   return email.toLowerCase().endsWith(".com");
 };
 
@@ -19,13 +16,29 @@ router.post("/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    if (!isValidEmail(email)) {
+    console.log("REGISTER REQUEST:", { name, email });
+
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        message: "Name, email, and password are required",
+      });
+    }
+
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      return res.status(400).json({
+        message: "Name, email, and password cannot be empty",
+      });
+    }
+
+    const normalizedEmail = email.toLowerCase();
+
+    if (!isValidEmail(normalizedEmail)) {
       return res.status(400).json({
         message: "Please enter a valid .com email address",
       });
     }
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: normalizedEmail });
 
     if (existingUser) {
       return res.status(400).json({
@@ -35,11 +48,15 @@ router.post("/register", async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await User.create({
-      name,
-      email,
+    const user = new User({
+      name: name.trim(),
+      email: normalizedEmail,
       password: hashedPassword,
     });
+
+    await user.save(); //
+
+    console.log("USER CREATED:", user._id);
 
     res.json({
       _id: user._id,
@@ -47,6 +64,8 @@ router.post("/register", async (req, res) => {
       email: user.email,
     });
   } catch (err) {
+    console.error("REGISTER ERROR:", err); // debug log
+
     res.status(500).json({
       error: err.message,
     });
@@ -57,7 +76,17 @@ router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+    console.log("LOGIN REQUEST:", { email });
+
+    if (!email || !password) {
+      return res.status(400).json({
+        message: "Email and password are required",
+      });
+    }
+
+    const normalizedEmail = email.toLowerCase();
+
+    const user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
       return res.status(400).json({
@@ -89,6 +118,8 @@ router.post("/login", async (req, res) => {
       },
     });
   } catch (err) {
+    console.error("LOGIN ERROR:", err); // debug log
+
     res.status(500).json({
       error: err.message,
     });
@@ -98,6 +129,8 @@ router.post("/login", async (req, res) => {
 router.put("/update", async (req, res) => {
   try {
     const { userId, name, email, password } = req.body;
+
+    console.log("UPDATE REQUEST:", { userId });
 
     const user = await User.findById(userId);
 
@@ -113,9 +146,8 @@ router.put("/update", async (req, res) => {
       });
     }
 
-    if (name) user.name = name;
-
-    if (email) user.email = email;
+    if (name) user.name = name.trim();
+    if (email) user.email = email.toLowerCase();
 
     if (password && password.trim() !== "") {
       user.password = await bcrypt.hash(password, 10);
@@ -133,6 +165,8 @@ router.put("/update", async (req, res) => {
       },
     });
   } catch (err) {
+    console.error("UPDATE ERROR:", err); // debug log
+
     res.status(500).json({
       message: err.message,
     });
@@ -145,6 +179,8 @@ router.get("/users", async (req, res) => {
 
     res.json(users);
   } catch (err) {
+    console.error("GET USERS ERROR:", err); // debug log
+
     res.status(500).json({
       message: "Failed to fetch users",
     });
