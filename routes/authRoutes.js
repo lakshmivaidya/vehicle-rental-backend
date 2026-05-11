@@ -4,14 +4,15 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-const allowedDomains = ["gmail.com", "yahoo.com", "outlook.com"];
-
+// Email validation function
 const isValidEmail = (email) => {
   const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  
+  // Basic email format check
   if (!regex.test(email)) return false;
 
-  const domain = email.split("@")[1].toLowerCase();
-  return allowedDomains.includes(domain);
+  // Check if email ends with .com
+  return email.toLowerCase().endsWith(".com");
 };
 
 router.post("/register", async (req, res) => {
@@ -20,13 +21,17 @@ router.post("/register", async (req, res) => {
 
     if (!isValidEmail(email)) {
       return res.status(400).json({
-        message: "Only Gmail, Yahoo, and Outlook emails are allowed",
+        message: "Please enter a valid .com email address",
       });
     }
 
     const existingUser = await User.findOne({ email });
-    if (existingUser)
-      return res.status(400).json({ message: "User already exists" });
+
+    if (existingUser) {
+      return res.status(400).json({
+        message: "User already exists",
+      });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -42,7 +47,9 @@ router.post("/register", async (req, res) => {
       email: user.email,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      error: err.message,
+    });
   }
 });
 
@@ -51,12 +58,20 @@ router.post("/login", async (req, res) => {
     const { email, password } = req.body;
 
     const user = await User.findOne({ email });
-    if (!user)
-      return res.status(400).json({ message: "User not found" });
+
+    if (!user) {
+      return res.status(400).json({
+        message: "User not found",
+      });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
-      return res.status(400).json({ message: "Incorrect password" });
+
+    if (!isMatch) {
+      return res.status(400).json({
+        message: "Incorrect password",
+      });
+    }
 
     const token = jwt.sign(
       { userId: user._id },
@@ -74,7 +89,9 @@ router.post("/login", async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      error: err.message,
+    });
   }
 });
 
@@ -83,16 +100,21 @@ router.put("/update", async (req, res) => {
     const { userId, name, email, password } = req.body;
 
     const user = await User.findById(userId);
-    if (!user)
-      return res.status(404).json({ message: "User not found" });
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
 
     if (email && !isValidEmail(email)) {
       return res.status(400).json({
-        message: "Only Gmail, Yahoo, and Outlook emails are allowed",
+        message: "Please enter a valid .com email address",
       });
     }
 
     if (name) user.name = name;
+
     if (email) user.email = email;
 
     if (password && password.trim() !== "") {
@@ -111,16 +133,21 @@ router.put("/update", async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      message: err.message,
+    });
   }
 });
 
 router.get("/users", async (req, res) => {
   try {
     const users = await User.find().select("-password");
+
     res.json(users);
   } catch (err) {
-    res.status(500).json({ message: "Failed to fetch users" });
+    res.status(500).json({
+      message: "Failed to fetch users",
+    });
   }
 });
 
