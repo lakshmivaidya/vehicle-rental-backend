@@ -20,13 +20,11 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// FIX TIMEZONE ISSUE FOR LOCALHOST + VERCEL
 const normalizeDate = (dateString) => {
   const [year, month, day] = dateString
     .split("-")
     .map(Number);
 
-  // STORE AT NOON TO PREVENT UTC DATE SHIFT
   return new Date(year, month - 1, day, 12, 0, 0);
 };
 
@@ -82,7 +80,6 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // FIXED DATE HANDLING
     const start = normalizeDate(startDate);
     const end = normalizeDate(endDate);
 
@@ -92,7 +89,6 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // CHECK FOR CONFLICTING BOOKINGS
     const conflictingBooking = await Booking.findOne({
       vehicleId,
       userId,
@@ -102,25 +98,14 @@ router.post("/", async (req, res) => {
     });
 
     if (conflictingBooking) {
-      // CURRENT DATE
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      // BOOKING START DATE
       const bookingStart = new Date(conflictingBooking.startDate);
       bookingStart.setHours(0, 0, 0, 0);
 
-      // TRUE ONLY IF RIDE HAS STARTED
       const rideStarted = bookingStart <= today;
 
-      /*
-        CASES:
-
-        booked  -> Vehicle not available
-        paid + future -> Vehicle not available
-        paid + started -> Ride in progress
-        completed -> ignored
-      */
 
       if (
         conflictingBooking.status === "paid" &&
@@ -133,11 +118,10 @@ router.post("/", async (req, res) => {
       }
 
       return res.status(400).json({
-        message: "Vehicle not available for selected dates",
+        message: "Vehicle not available for selected date(s)",
       });
     }
 
-    // TOTAL DAYS CALCULATION
     const millisecondsPerDay =
       1000 * 60 * 60 * 24;
 
