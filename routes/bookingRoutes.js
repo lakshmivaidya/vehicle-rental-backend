@@ -21,16 +21,13 @@ const transporter = nodemailer.createTransport({
 });
 
 // FIX TIMEZONE ISSUE FOR LOCALHOST + VERCEL
-const normalizeDate = (dateString, isEndDate = false) => {
-  const date = new Date(dateString);
+const normalizeDate = (dateString) => {
+  const [year, month, day] = dateString
+    .split("-")
+    .map(Number);
 
-  if (isEndDate) {
-    date.setHours(23, 59, 59, 999);
-  } else {
-    date.setHours(0, 0, 0, 0);
-  }
-
-  return date;
+  // STORE AT NOON TO PREVENT UTC DATE SHIFT
+  return new Date(year, month - 1, day, 12, 0, 0);
 };
 
 router.get("/", async (req, res) => {
@@ -87,7 +84,7 @@ router.post("/", async (req, res) => {
 
     // FIXED DATE HANDLING
     const start = normalizeDate(startDate);
-    const end = normalizeDate(endDate, true);
+    const end = normalizeDate(endDate);
 
     if (start > end) {
       return res.status(400).json({
