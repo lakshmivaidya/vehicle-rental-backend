@@ -92,35 +92,40 @@ router.post("/", async (req, res) => {
       });
     }
 
-    const userConflictBooking = await Booking.find({
+    // CHECK FOR CONFLICTING BOOKINGS
+    const conflictingBooking = await Booking.findOne({
       vehicleId,
       userId,
-      status: "booked",
+      status: { $in: ["booked", "paid"] },
       startDate: { $lte: end },
       endDate: { $gte: start },
     });
 
-    if (userConflictBooking.length > 0) {
-      return res.status(400).json({
-        message: "Vehicle not available for selected dates",
-      });
-    }
+    if (conflictingBooking) {
+      // CURRENT DATE
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-    const today = new Date();
+      // BOOKING START DATE
+      const bookingStart = new Date(conflictingBooking.startDate);
+      bookingStart.setHours(0, 0, 0, 0);
 
-    const activePaidRide = await Booking.findOne({
-      vehicleId,
-      userId,
-      status: "paid",
-      startDate: { $lte: end },
-      endDate: { $gte: start },
-    });
+      // TRUE ONLY IF RIDE HAS STARTED
+      const rideStarted = bookingStart <= today;
 
-    if (activePaidRide) {
-      const rideAlreadyStarted =
-        new Date(activePaidRide.startDate) <= today;
+      /*
+        CASES:
 
-      if (rideAlreadyStarted) {
+        booked  -> Vehicle not available
+        paid + future -> Vehicle not available
+        paid + started -> Ride in progress
+        completed -> ignored
+      */
+
+      if (
+        conflictingBooking.status === "paid" &&
+        rideStarted
+      ) {
         return res.status(400).json({
           message:
             "Ride is in progress. Please complete it to book the next one.",
