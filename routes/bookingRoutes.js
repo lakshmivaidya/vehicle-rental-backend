@@ -20,6 +20,19 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// FIX TIMEZONE ISSUE FOR LOCALHOST + VERCEL
+const normalizeDate = (dateString, isEndDate = false) => {
+  const date = new Date(dateString);
+
+  if (isEndDate) {
+    date.setHours(23, 59, 59, 999);
+  } else {
+    date.setHours(0, 0, 0, 0);
+  }
+
+  return date;
+};
+
 router.get("/", async (req, res) => {
   try {
     const bookings = await Booking.find()
@@ -49,11 +62,15 @@ router.post("/", async (req, res) => {
     const user = await User.findById(userId);
 
     if (!vehicle) {
-      return res.status(404).json({ message: "Vehicle not found" });
+      return res.status(404).json({
+        message: "Vehicle not found",
+      });
     }
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({
+        message: "User not found",
+      });
     }
 
     if (!vehicle.userId) {
@@ -68,11 +85,9 @@ router.post("/", async (req, res) => {
       });
     }
 
-    const start = new Date(startDate);
-    start.setHours(0, 0, 0, 0);
-
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
+    // FIXED DATE HANDLING
+    const start = normalizeDate(startDate);
+    const end = normalizeDate(endDate, true);
 
     if (start > end) {
       return res.status(400).json({
@@ -90,45 +105,50 @@ router.post("/", async (req, res) => {
 
     if (userConflictBooking.length > 0) {
       return res.status(400).json({
-        message: "Vehicle not available for selected date(s)",
+        message: "Vehicle not available for selected dates",
       });
     }
 
     const today = new Date();
-today.setHours(0, 0, 0, 0);
 
-const activePaidRide = await Booking.findOne({
-  vehicleId,
-  userId,
-  status: "paid",
-  startDate: { $lte: end },
-  endDate: { $gte: start },
-});
-
-if (activePaidRide) {
-
-  const rideAlreadyStarted =
-    new Date(activePaidRide.startDate) <= today;
-
-  if (rideAlreadyStarted) {
-    return res.status(400).json({
-      message:
-        "Ride is in progress. Please complete it to book the next one.",
+    const activePaidRide = await Booking.findOne({
+      vehicleId,
+      userId,
+      status: "paid",
+      startDate: { $lte: end },
+      endDate: { $gte: start },
     });
-  }
 
-  return res.status(400).json({
-    message: "Vehicle not available for selected date(s)",
-  });
-}
+    if (activePaidRide) {
+      const rideAlreadyStarted =
+        new Date(activePaidRide.startDate) <= today;
+
+      if (rideAlreadyStarted) {
+        return res.status(400).json({
+          message:
+            "Ride is in progress. Please complete it to book the next one.",
+        });
+      }
+
+      return res.status(400).json({
+        message: "Vehicle not available for selected dates",
+      });
+    }
+
+    // TOTAL DAYS CALCULATION
+    const millisecondsPerDay =
+      1000 * 60 * 60 * 24;
 
     let days = Math.ceil(
-      (end - start) / (1000 * 60 * 60 * 24)
+      (end - start) / millisecondsPerDay
     );
 
-    if (days === 0) days = 1;
+    if (days <= 0) {
+      days = 1;
+    }
 
-    const totalPrice = days * vehicle.pricePerDay;
+    const totalPrice =
+      days * vehicle.pricePerDay;
 
     const booking = await Booking.create({
       userId,
@@ -147,10 +167,16 @@ if (activePaidRide) {
         text: `Your booking for ${vehicle.make} ${vehicle.model} is confirmed.`,
       });
     } catch (emailErr) {
-      console.error("Email error:", emailErr.message);
+      console.error(
+        "Email error:",
+        emailErr.message
+      );
     }
 
-    res.json(booking);
+    res.json({
+      message: "Booking successful",
+      booking,
+    });
 
   } catch (err) {
     console.error(err);
@@ -295,7 +321,10 @@ router.get("/vehicle/:vehicleId/history", async (req, res) => {
       const end = new Date(b.endDate);
 
       const days =
-        Math.ceil((end - start) / (1000 * 60 * 60 * 24)) || 1;
+        Math.ceil(
+          (end - start) /
+          (1000 * 60 * 60 * 24)
+        ) || 1;
 
       return {
         _id: b._id,
